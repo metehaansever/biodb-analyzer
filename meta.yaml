@@ -1,0 +1,43 @@
+package:
+  name: bio-db-analyzer
+  version: 0.1.0
+
+source:
+  path: .
+
+build:
+  number: 0
+  script: {{ PYTHON }} -m pip install . -vv
+
+requirements:
+  host:
+    - python >=3.8
+    - pip
+  run:
+    - python >=3.8
+    - pandas >=2.0.0
+    - numpy >=1.24.0
+    - sqlalchemy >=2.0.0
+    - plotly >=5.15.0
+    - scipy >=1.10.0
+    - statsmodels >=0.14.0
+    - python-dotenv >=1.0.0
+    - click >=8.1.0
+
+test:
+  imports:
+    - bio-db-analyzer
+    - bio-db-analyzer.database
+    - bio-db-analyzer.analysis
+    - bio-db-analyzer.visualization
+
+about:
+  home: https://github.com/metehaansever/biodb-analyzer
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: 'Biodb Analyzer - Model Context Protocol for Bio database analysis'
+
+extra:
+  recipe-maintainers:
+    - metehaansever

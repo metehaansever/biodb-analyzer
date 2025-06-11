@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import plotly.express as px
 from biodb_analyzer.visualization.generate_dashboard import analyze_table, generate_correlations, generate_overall_summary, generate_dashboard_html
+from biodb_analyzer.analysis.database_analyzer import DatabaseAnalyzer
 
 @click.group()
 def cli():
@@ -35,37 +36,45 @@ def discover(db_path: str):
 
 @cli.command()
 @click.argument('db_path', type=click.Path(exists=True))
-def analyze(db_path: str):
-    """
-    Automatically analyze the database contents
-    
-    Args:
-        db_path: Path to the SQLite database file
-    """
+@click.option('--output', help='Output file for the report')
+@click.option('--table', help='Specific table to analyze')
+@click.option('--format', type=click.Choice(['markdown', 'json']), default='markdown', help='Output format')
+def analyze(db_path: str, output: str, table: str, format: str):
+    """Analyze the database and generate a comprehensive report"""
     try:
         with DatabaseConnection(db_path) as conn:
-            tables = conn.get_table_names()
+            # Get all tables if none specified
+            tables = [table] if table else conn.get_table_names()
             
-            click.echo("\nDatabase Analysis Report")
-            click.echo("=======================")
+            reports = {}
+            for table_name in tables:
+                click.echo(f"\nAnalyzing table: {table_name}")
+                query = f"SELECT * FROM {table_name} LIMIT 1000"
+                data = conn.execute_query(query)
+                
+                if data.empty:
+                    click.echo(f"Warning: No data found in table {table_name}", err=True)
+                    continue
+                
+                analyzer = DatabaseAnalyzer(data, table_name)
+                report = analyzer.analyze()
+                reports[table_name] = report
+                
+                # Print narrative
+                click.echo("\nAnalysis Narrative:")
+                click.echo(report["narrative"])
+                
+                # Save report if output is specified
+                if output:
+                    if format == 'markdown':
+                        with open(f"{output}_{table_name}.md", 'w') as f:
+                            f.write(report["narrative"])
+                    else:  # json
+                        with open(f"{output}_{table_name}.json", 'w') as f:
+                            json.dump(report, f, indent=2)
+                    
+                    click.echo(f"\nReport saved to {output}_{table_name}.{format}")
             
-            for table in tables:
-                click.echo(f"\nAnalyzing table: {table}")
-                info = conn.get_table_info(table)
-                
-                # Get sample data
-                sample_query = f"SELECT * FROM {table} LIMIT 5"
-                sample_data = conn.execute_query(sample_query)
-                
-                click.echo("\nSample Data:")
-                click.echo(sample_data.to_string())
-                
-                click.echo("\nTable Structure:")
-                click.echo(info.to_string())
-                
-                # Add more analysis here
-                # For example, count rows, check for null values, etc.
-                
     except Exception as e:
         click.echo(f"Error analyzing database: {str(e)}", err=True)
 
